@@ -1,25 +1,5 @@
 package collection
 
-import (
-	"fmt"
-)
-
-func uniqueIndex[K comparable, T any](collection []T, idFunc IdentifierFunc[K, T]) (map[K]T, error) {
-	index, items := make(map[K]struct{}, len(collection)), make(map[K]T, len(collection))
-
-	for _, item := range collection {
-		id := idFunc(item)
-		if _, ok := index[id]; ok {
-			return nil, fmt.Errorf("duplicated identifier")
-		}
-
-		index[id] = struct{}{}
-		items[id] = item
-	}
-
-	return items, nil
-}
-
 func Filter[T any](collection []T, fn FilterFunc[T]) []T {
 	result := make([]T, 0)
 	for _, item := range collection {
@@ -40,26 +20,30 @@ func Each[T any](collection []T, fn ItemFunc[T]) error {
 	return nil
 }
 
-func Search[T any](collection []T, fn FilterFunc[T]) T {
-	var needle T
+func Search[T any](collection []T, fn FilterFunc[T]) (T, bool) {
+	var (
+		needle T
+		found  bool
+	)
 
 	for _, item := range collection {
 		if fn(item) {
 			needle = item
+			found = true
 			break
 		}
 	}
 
-	return needle
+	return needle, found
 }
 
-func IndexUnique[K comparable, T any](collection []T, idFunc IdentifierFunc[K, T]) (map[K]T, error) {
-	items, err := uniqueIndex[K, T](collection, idFunc)
+func IndexUnique[K comparable, T any](collection []T, idFunc IdentifierFunc[K, T], onError NonUniqueIndexFunc[T]) (IndexAccessFunc[K, T], error) {
+	index, err := uniqueIndex[K, T](collection, idFunc, onError)
 	if err != nil {
 		return nil, err
 	}
 
-	return items, nil
+	return indexAccessFunc(collection, index), nil
 }
 
 func IndexByFunc[K comparable, T any](collection []T, idFunc IdentifierFunc[K, T]) map[K]T {
@@ -71,20 +55,20 @@ func IndexByFunc[K comparable, T any](collection []T, idFunc IdentifierFunc[K, T
 	return indexed
 }
 
-func First[T any](collection []T) T {
+func First[T any](collection []T) (T, bool) {
 	var needle T
 	if len(collection) > 0 {
 		needle = collection[0]
-		return needle
+		return needle, true
 	}
-	return needle
+	return needle, false
 }
 
-func Last[T any](collection []T) T {
+func Last[T any](collection []T) (T, bool) {
 	var needle T
 	if len(collection) > 0 {
 		needle = collection[len(collection)-1]
-		return needle
+		return needle, true
 	}
-	return needle
+	return needle, false
 }
